@@ -110,7 +110,7 @@ def main():
     x_opt, f_opt, final_interval = fibonacci_search(func, a, b, epsilon)
 
     # Se muestra el resultado
-    print("\n🔍 Resultado:")
+    print("\nResultado:")
     print(f"Óptimo aproximado x*: {x_opt}")
     print(f"f(x*): {f_opt}")
     print(f"Intervalo final: {final_interval}")
