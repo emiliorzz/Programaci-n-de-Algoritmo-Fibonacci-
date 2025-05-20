@@ -1,6 +1,6 @@
 import numpy as np
 from math import exp
-from sympy import symbols, lambdify, Poly
+from sympy import symbols, lambdify, Poly, exp
 from sympy.abc import x
 import tkinter as tk
 from tkinter import messagebox
@@ -62,18 +62,19 @@ def get_polynomial(coeffs):
 
 # Construye la función simbólica en base a la elección del usuario
 def build_function(choice, P_coeffs, Q_coeffs=None):
+    # Se crea P(x) como un polinomio
     P = get_polynomial(P_coeffs)
 
     if choice == "1":
-        # Construir la función Cociente Polinomial
+        # Crear la función Cociente Polinomial: P(x)/Q(x)
         if Q_coeffs:
             Q = get_polynomial(Q_coeffs)
-            func = lambdify(x, P / Q, "numpy")
+            func = lambdify(x, P / Q, "numpy")  # Convertir P(x)/Q(x) en función de Python
         else:
             raise ValueError("Debe proporcionar coeficientes para Q(x) cuando elige la opción 1.")
     elif choice == "2":
-        # Construir la función Exponencial + Polinomio
-        func = lambdify(x, exp(x) + P, "numpy")
+        # Crear la función Exponencial + Polinomio: exp(x) + P(x)
+        func = lambdify(x, exp(x) + P, "numpy")  # Convertir exp(x) + P(x) en función de Python
     else:
         raise ValueError("Opción no válida")
 
@@ -87,14 +88,28 @@ def on_submit():
         option = option_var.get()
 
         # Obtener los coeficientes y convertirlos en listas de floats
-        P_coeffs = list(map(float, entry_P.get().split(",")))
+        if not entry_P.get():  # Verificar si el campo de P(x) está vacío
+            raise ValueError("Debe ingresar los coeficientes de P(x).")
 
+        # Si la opción es 1 (Cociente Polinomial), se espera una lista de coeficientes
         if option == "1":
+            P_coeffs = list(map(float, entry_P.get().split(",")))
+        else:
+            # Si es opción 2 (Exponencial + Polinomio), se espera un solo coeficiente
+            P_coeffs = [float(entry_P.get())]
+
+        # Si se está usando la opción 1, necesitamos Q(x)
+        if option == "1":
+            if not entry_Q.get():  # Verificar si el campo de Q(x) está vacío
+                raise ValueError("Debe ingresar los coeficientes de Q(x) cuando selecciona la opción 1.")
             Q_coeffs = list(map(float, entry_Q.get().split(",")))
         else:
-            Q_coeffs = None
+            Q_coeffs = None  # Si es opción 2, no necesitamos Q(x)
 
         # Obtener intervalo y epsilon
+        if not entry_a.get() or not entry_b.get() or not entry_epsilon.get():  # Verificar campos vacíos
+            raise ValueError("Debe ingresar los valores para el intervalo [a, b] y la precisión (epsilon).")
+        
         a = float(entry_a.get())
         b = float(entry_b.get())
         epsilon = float(entry_epsilon.get())
@@ -110,8 +125,23 @@ def on_submit():
                                 f"f(x*): {f_opt}\n"
                                 f"Intervalo final: {final_interval}")
 
-    except Exception as e:
+    except ValueError as e:
         messagebox.showerror("Error", str(e))
+    except Exception as e:
+        messagebox.showerror("Error", "Ocurrió un error inesperado: " + str(e))
+
+
+# Función para actualizar la visibilidad del campo de Q(x)
+def update_Q_visibility(option):
+    if option == "1":
+        entry_Q.grid(row=4, column=1)
+        label_Q.grid(row=4, column=0)
+        p_hint_label.config(text="Ej: 1,2,3 para P(x) = 1 + 2x + 3x²")
+    else:
+        entry_Q.grid_forget()
+        label_Q.grid_forget()
+        p_hint_label.config(text="Solo un coeficiente. Ej: 4 para P(x) = 4")
+
 
 
 # Crear la ventana principal de Tkinter
@@ -122,16 +152,17 @@ root.title("Búsqueda de Fibonacci")
 tk.Label(root, text="Selecciona el tipo de función:").grid(row=0, column=0, columnspan=2)
 
 option_var = tk.StringVar(value="1")
-tk.Radiobutton(root, text="Cociente Polinomial", variable=option_var, value="1").grid(row=1, column=0, columnspan=2)
-tk.Radiobutton(root, text="Exponencial + Polinomio", variable=option_var, value="2").grid(row=2, column=0, columnspan=2)
+tk.Radiobutton(root, text="Cociente Polinomial", variable=option_var, value="1", command=lambda: update_Q_visibility("1")).grid(row=1, column=0, columnspan=2)
+tk.Radiobutton(root, text="Exponencial + Polinomio", variable=option_var, value="2", command=lambda: update_Q_visibility("2")).grid(row=2, column=0, columnspan=2)
 
 tk.Label(root, text="Coeficientes P(x):").grid(row=3, column=0)
 entry_P = tk.Entry(root)
 entry_P.grid(row=3, column=1)
+p_hint_label = tk.Label(root, text="", fg="gray")
+p_hint_label.grid(row=3, column=2, sticky="w")
 
-tk.Label(root, text="Coeficientes Q(x) (solo para opción 1):").grid(row=4, column=0)
+label_Q = tk.Label(root, text="Coeficientes Q(x) (solo para opción 1):")
 entry_Q = tk.Entry(root)
-entry_Q.grid(row=4, column=1)
 
 tk.Label(root, text="Intervalo [a, b]:").grid(row=5, column=0)
 entry_a = tk.Entry(root)
@@ -151,6 +182,7 @@ submit_button.grid(row=7, column=0, columnspan=3)
 result_label = tk.Label(root, text="")
 result_label.grid(row=8, column=0, columnspan=3)
 
-# Iniciar la interfaz gráfica
-root.mainloop()
+# Inicializar la visibilidad de Q(x)
+update_Q_visibility(option_var.get())
 
+root.mainloop()
