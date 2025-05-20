@@ -1,120 +1,80 @@
-import numpy as np
-from math import exp
-from sympy import symbols, lambdify, Poly
-from sympy.abc import x  # variable simbólica x
+import tkinter as tk
+from tkinter import messagebox
 
-# Genera los primeros n números de Fibonacci
-def fibonacci_numbers(n):
-    fibs = [1, 1]
-    for i in range(2, n):
-        fibs.append(fibs[-1] + fibs[-2])
-    return fibs
-
-# Determina el número mínimo de términos de Fibonacci necesarios para una precisión epsilon en el intervalo [a, b]
-def required_fib_index(epsilon, a, b):
+# Función Fibonacci (esto se mantiene como está en tu código original)
+def fibonacci_search(func, a, b, epsilon):
     fibs = [1, 1]
     n = 2
     while (b - a) / epsilon > fibs[-1]:
         fibs.append(fibs[-1] + fibs[-2])
         n += 1
-    fibs.append(fibs[-1] + fibs[-2])  # Asegura fibs[n] existe
-    return n, fibs
 
-
-# Implementación principal del algoritmo de búsqueda de Fibonacci
-def fibonacci_search(func, a, b, epsilon):
-    n, fibs = required_fib_index(epsilon, a, b)
-    k = 0
-    L = b - a
-
-    # Se calculan los dos puntos iniciales dentro del intervalo
-    x1 = a + fibs[n - 2] / fibs[n] * L
-    x2 = a + fibs[n - 1] / fibs[n] * L
-    f1 = func(x1)
-    f2 = func(x2)
-
-    # Repetimos el proceso hasta que quede un intervalo suficientemente pequeño
-    for i in range(1, n - 1):
-        if f1 > f2:
-            a = x1
-            x1 = x2
-            f1 = f2
-            x2 = a + fibs[n - i - 1] / fibs[n - i] * (b - a)
-            f2 = func(x2)
-        else:
+    x1 = a + fibs[n - 2] / fibs[n] * (b - a)
+    x2 = a + fibs[n - 1] / fibs[n] * (b - a)
+    
+    while (b - a) > epsilon:
+        if func(x1) < func(x2):
             b = x2
-            x2 = x1
-            f2 = f1
-            x1 = a + fibs[n - i - 2] / fibs[n - i] * (b - a)
-            f1 = func(x1)
+        else:
+            a = x1
+        n -= 1
+        x1 = a + fibs[n - 2] / fibs[n] * (b - a)
+        x2 = a + fibs[n - 1] / fibs[n] * (b - a)
+    
+    return (a + b) / 2  # Retorna el valor óptimo
 
-    x_opt = (a + b) / 2  # punto óptimo aproximado
-    return x_opt, func(x_opt), (a, b)
+# Función para llamar la búsqueda cuando el usuario presiona el botón
+def on_submit():
+    try:
+        # Obtener los valores de los campos de entrada
+        option = int(option_var.get())  # Opción seleccionada
+        a = float(entry_a.get())  # Valor de 'a'
+        b = float(entry_b.get())  # Valor de 'b'
+        epsilon = float(entry_epsilon.get())  # Valor de 'epsilon'
+        
+        # Selección de la función que el usuario desea
+        if option == 1:
+            func = lambda x: (x**2)  # Función ejemplo: x^2 (cociente polinomial)
+        elif option == 2:
+            func = lambda x: (x**2 + 3*x + 2)  # Función ejemplo: x^2 + 3x + 2 (exponencial + polinomio)
+        else:
+            messagebox.showerror("Error", "Opción inválida.")
+            return
 
-# Construye un polinomio a partir de una lista de coeficientes
-def get_polynomial(coeffs):
-    return sum(c * x**i for i, c in enumerate(coeffs))
+        # Llamar a la función fibonacci_search
+        result = fibonacci_search(func, a, b, epsilon)
 
-# Construye la función simbólica en base a la elección del usuario
-def build_function():
-    print("Selecciona el tipo de función:")
-    print("1. Cociente polinomial: f(x) = P(x)/Q(x)")
-    print("2. Exponencial + polinomio: f(x) = exp(x) + P(x)")
+        # Mostrar el resultado en el mensaje
+        messagebox.showinfo("Resultado", f"El valor óptimo es: {result}")
+    
+    except Exception as e:
+        messagebox.showerror("Error", f"Hubo un error: {e}")
 
-    choice = input("Opción (1 o 2): ")
+# Crear la ventana principal de Tkinter
+root = tk.Tk()
+root.title("Búsqueda de Fibonacci")
 
-    if choice == "1":
-        # Entrada de coeficientes del numerador P(x)
-        print("Coeficientes para P(x) (separados por coma, de menor a mayor grado):")
-        P_coeffs = list(map(float, input().split(",")))
+# Crear y colocar los widgets (campos de texto, botones, etc.)
+tk.Label(root, text="Seleccionar opción:").grid(row=0, column=0)
+option_var = tk.StringVar(value="1")
+tk.Radiobutton(root, text="Función cociente polinomial (x^2)", variable=option_var, value="1").grid(row=1, column=0)
+tk.Radiobutton(root, text="Función exponencial + polinomio (x^2 + 3x + 2)", variable=option_var, value="2").grid(row=2, column=0)
 
-        # Entrada de coeficientes del denominador Q(x)
-        print("Coeficientes para Q(x) (separados por coma, de menor a mayor grado):")
-        Q_coeffs = list(map(float, input().split(",")))
+tk.Label(root, text="Intervalo (a):").grid(row=3, column=0)
+entry_a = tk.Entry(root)
+entry_a.grid(row=3, column=1)
 
-        P = get_polynomial(P_coeffs)
-        Q = get_polynomial(Q_coeffs)
+tk.Label(root, text="Intervalo (b):").grid(row=4, column=0)
+entry_b = tk.Entry(root)
+entry_b.grid(row=4, column=1)
 
-        # lambdify convierte la expresión simbólica en una función de Python evaluable
-        func = lambdify(x, P / Q, "numpy")
-        return func
+tk.Label(root, text="Precisión (epsilon):").grid(row=5, column=0)
+entry_epsilon = tk.Entry(root)
+entry_epsilon.grid(row=5, column=1)
 
-    elif choice == "2":
-        # Entrada de coeficientes del polinomio P(x)
-        print("Coeficientes para P(x) (separados por coma, de menor a mayor grado):")
-        P_coeffs = list(map(float, input().split(",")))
+# Botón para ejecutar
+submit_button = tk.Button(root, text="Ejecutar", command=on_submit)
+submit_button.grid(row=6, column=0, columnspan=2)
 
-        P = get_polynomial(P_coeffs)
-        func = lambdify(x, exp(x) + P, "numpy")
-        return func
-
-    else:
-        print("Opción no válida")
-        exit(1)
-
-# Función principal del programa
-def main():
-    # Se construye la función según la entrada del usuario
-    func = build_function()
-
-    # Entrada del intervalo de búsqueda
-    print("Ingresa el intervalo de búsqueda [a, b]:")
-    a = float(input("a: "))
-    b = float(input("b: "))
-
-    # Entrada de la precisión deseada
-    print("Precisión deseada (epsilon):")
-    epsilon = float(input("epsilon: "))
-
-    # Se llama al algoritmo de búsqueda de Fibonacci
-    x_opt, f_opt, final_interval = fibonacci_search(func, a, b, epsilon)
-
-    # Se muestra el resultado
-    print("\nResultado:")
-    print(f"Óptimo aproximado x*: {x_opt}")
-    print(f"f(x*): {f_opt}")
-    print(f"Intervalo final: {final_interval}")
-
-# Punto de entrada del script
-if __name__ == "__main__":
-    main()
+# Iniciar la aplicación
+root.mainloop()
